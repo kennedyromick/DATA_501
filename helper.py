@@ -62,7 +62,6 @@ def data_cleaning(df):
 
 def create_parallel_coordinates_plot(df, selected_columns):
     # Separate categorical and numeric columns
-    categorical_columns = ['TrackStatus']
     numeric_columns = selected_columns[1:]
 
     # Normalize numeric columns
@@ -80,7 +79,12 @@ def create_parallel_coordinates_plot(df, selected_columns):
         range_color=[4, 6],  # Set the range for color scale
     )
 
-# Customize the layout
+    # Original dimensions
+    original_dimensions = [
+        dict(range=[0, 1], tickvals=[0, 1], label=col) for col in selected_columns[1:]
+    ]
+
+    # Customize the layout
     fig.update_layout(
         height=600,
         width=900,
@@ -97,24 +101,23 @@ def create_parallel_coordinates_plot(df, selected_columns):
                     dict(
                         args=[
                             {
-                                "dimensions": [
-                                    dict(range=[0, 1], tickvals=[0, 1], label=col) for col in selected_columns[1:]
-                                ]
+                                "dimensions": original_dimensions  # Reset dimensions to original values
                             }
                         ],
-                        label="Reset Axes",
+                        label="Reset",
                         method="relayout"
                     )
                 ],
                 direction="down",
-                pad={"r": 10, "t": 10},
                 showactive=True,
                 x=0.02,  # Adjust x-coordinate for left position
                 xanchor="left",
-                y=1.02,  # Adjust y-coordinate for top position
+                y=0.02,  # Adjust y-coordinate for top position
                 yanchor="top"
             ),
         ]
     )
 
     return fig
+
+
