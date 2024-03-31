@@ -23,8 +23,12 @@ Investigate patterns, trends, and causal factors surrounding safety car incident
 ## How to run the project?
 
 1. ...
+<<<<<<< HEAD
+2.  
+=======
 2.  
 ```
+>>>>>>> 75c1f167026bff3bfeba7cf45e1a0cada9120eb5
 
 #### Bitcoin(BTC)
 ```
