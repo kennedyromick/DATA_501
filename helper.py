@@ -1,10 +1,12 @@
 from sys import prefix
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import streamlit as st
 from sklearn.preprocessing import MinMaxScaler
 import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import plotly.graph_objects as go
 
 
 excel_type =["vnd.ms-excel","vnd.openxmlformats-officedocument.spreadsheetml.sheet", "vnd.oasis.opendocument.spreadsheet", "vnd.oasis.opendocument.text"]
@@ -14,6 +16,27 @@ def data(data, file_type, seperator=None):
 
     if file_type == "csv":
         data = pd.read_csv(data)
+    
+    elif file_type in excel_type:
+        data = pd.read_excel(data)
+        st.sidebar.info("If you are using Excel file so there could be chance of getting minor error(temporary sollution: avoid the error by removing overview option from input box) so bear with it. It will be fixed soon")
+    
+    elif file_type == "plain":
+        try:
+            data = pd.read_table(data, sep=seperator)
+        except ValueError:
+            st.info("If you haven't Type the separator then dont worry about the error this error will go as you type the separator value and hit Enter.")
+
+    return data
+
+def seconddata(data, file_type, seperator=None):
+
+    if file_type == "csv":
+        data = pd.read_csv(data)
+
+   # elif file_type == "json":
+    #    data = pd.read_json(data)
+    #    data = (data["devices"].apply(pd.Series))
     
     elif file_type in excel_type:
         data = pd.read_excel(data)
@@ -60,6 +83,23 @@ def data_cleaning(df):
     return df
 
 
+def correlation_matrix(df, title='Correlation Heatmap'):
+
+    # Exclude non-numeric columns from correlation calculation
+    numeric_df = df.select_dtypes(include=['float64', 'int64'])
+
+    # Calculate the correlation matrix
+    corr_matrix = numeric_df.corr()
+
+    # Create the figure and axis
+    fig, ax = plt.subplots(figsize=(15, 15))
+
+    # Plot the heatmap
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
+
+    return fig
+
+
 def create_parallel_coordinates_plot(df, selected_columns):
     # Separate categorical and numeric columns
     numeric_columns = selected_columns[1:]
@@ -79,11 +119,6 @@ def create_parallel_coordinates_plot(df, selected_columns):
         range_color=[4, 6],  # Set the range for color scale
     )
 
-    # Original dimensions
-    original_dimensions = [
-        dict(range=[0, 1], tickvals=[0, 1], label=col) for col in selected_columns[1:]
-    ]
-
     # Customize the layout
     fig.update_layout(
         height=600,
@@ -94,30 +129,76 @@ def create_parallel_coordinates_plot(df, selected_columns):
             title="Status",
             tickvals=[4, 6],
             ticktext=["4", "6"]
-        ),
-        updatemenus=[
-            dict(
-                buttons=[
-                    dict(
-                        args=[
-                            {
-                                "dimensions": original_dimensions  # Reset dimensions to original values
-                            }
-                        ],
-                        label="Reset",
-                        method="relayout"
-                    )
-                ],
-                direction="down",
-                showactive=True,
-                x=0.02,  # Adjust x-coordinate for left position
-                xanchor="left",
-                y=0.02,  # Adjust y-coordinate for top position
-                yanchor="top"
-            ),
-        ]
+        )
     )
 
     return fig
 
+def monte_carlo_simulation(df, selected_race, num_simulations=1000):
+    # Convert num_simulations to an integer if it's a string
+    if isinstance(num_simulations, str):
+        num_simulations = int(num_simulations)
 
+    # Get unique lap numbers
+    all_lap_numbers = df['LapNumber'].unique()
+
+    # Create a DataFrame to store simulation results
+    simulation_df = pd.DataFrame({'LapNumber': all_lap_numbers})
+
+    # Calculate safety car probabilities for each lap
+    safety_car_probabilities = calculate_safety_car_probability(df)
+
+    # Perform Monte Carlo simulation to predict the probability of safety car over each lap
+    for _ in range(num_simulations):
+        # Generate random probabilities for safety car occurrence based on calculated probabilities
+        probabilities = np.random.rand(len(all_lap_numbers))
+        
+        # Interpolate probabilities to match all lap numbers
+        interpolated_probabilities = np.interp(all_lap_numbers, safety_car_probabilities['LapNumber'], safety_car_probabilities['Probability_Safety_Car'])
+        
+        safety_car_occurrence = probabilities <= interpolated_probabilities
+        simulation_df[f'Simulation_{_+1}'] = safety_car_occurrence.astype(int)
+
+    # Assign the selected race name to each row
+    simulation_df['Race'] = selected_race
+
+    return simulation_df
+
+
+def calculate_safety_car_probability(df):
+    # Filter data to include only rows with track status 4 or 6
+    safety_car_data = df[df['TrackStatus'].isin([4, 6])]
+    
+    # Group by LapNumber and count the occurrences of track status 4 or 6 for each lap
+    safety_car_counts = safety_car_data.groupby('LapNumber').size().reset_index(name='SafetyCarCount')
+    
+    # Calculate the total number of laps
+    total_laps = df['LapNumber'].nunique()
+    
+    # Calculate the probability of safety car for each lap
+    safety_car_counts['Probability_Safety_Car'] = safety_car_counts['SafetyCarCount'] / total_laps
+    
+    return safety_car_counts
+
+
+def plot_monte_carlo_simulation(simulation_df, selected_race):
+    fig = go.Figure()
+
+    # Calculate the average probability across all simulations
+    avg_probability = np.mean(simulation_df.filter(like='Simulation_'), axis=1)
+
+    # Add trace for the averaged probability
+    fig.add_trace(go.Scatter(x=simulation_df['LapNumber'], y=avg_probability, mode='lines', name='Average Probability'))
+
+    # Update layout
+    fig.update_layout(
+        xaxis_title='Lap Number',
+        yaxis_title='Probability of Safety Car',
+        height=600,
+        width=900,
+        yaxis=dict(range=[0, 1]),
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        margin=dict(l=50, r=50, t=50, b=50)
+    )
+
+    return fig
