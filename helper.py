@@ -12,44 +12,6 @@ import plotly.graph_objects as go
 excel_type =["vnd.ms-excel","vnd.openxmlformats-officedocument.spreadsheetml.sheet", "vnd.oasis.opendocument.spreadsheet", "vnd.oasis.opendocument.text"]
 
 
-def data(data, file_type, seperator=None):
-
-    if file_type == "csv":
-        data = pd.read_csv(data)
-    
-    elif file_type in excel_type:
-        data = pd.read_excel(data)
-        st.sidebar.info("If you are using Excel file so there could be chance of getting minor error(temporary sollution: avoid the error by removing overview option from input box) so bear with it. It will be fixed soon")
-    
-    elif file_type == "plain":
-        try:
-            data = pd.read_table(data, sep=seperator)
-        except ValueError:
-            st.info("If you haven't Type the separator then dont worry about the error this error will go as you type the separator value and hit Enter.")
-
-    return data
-
-def seconddata(data, file_type, seperator=None):
-
-    if file_type == "csv":
-        data = pd.read_csv(data)
-
-   # elif file_type == "json":
-    #    data = pd.read_json(data)
-    #    data = (data["devices"].apply(pd.Series))
-    
-    elif file_type in excel_type:
-        data = pd.read_excel(data)
-        st.sidebar.info("If you are using Excel file so there could be chance of getting minor error(temporary sollution: avoid the error by removing overview option from input box) so bear with it. It will be fixed soon")
-    
-    elif file_type == "plain":
-        try:
-            data = pd.read_table(data, sep=seperator)
-        except ValueError:
-            st.info("If you haven't Type the separator then dont worry about the error this error will go as you type the separator value and hit Enter.")
-
-    return data
-
 def data_cleaning(df):
     # Drop Deleted column
     df.drop('Deleted', axis=1, inplace=True)
@@ -92,7 +54,7 @@ def correlation_matrix(df, title='Correlation Heatmap'):
     corr_matrix = numeric_df.corr()
 
     # Create the figure and axis
-    fig, ax = plt.subplots(figsize=(15, 15))
+    fig, ax = plt.subplots(figsize=(20, 20))
 
     # Plot the heatmap
     sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
@@ -149,6 +111,8 @@ def monte_carlo_simulation(df, selected_race, num_simulations=1000):
     safety_car_probabilities = calculate_safety_car_probability(df)
 
     # Perform Monte Carlo simulation to predict the probability of safety car over each lap
+    simulation_columns = []
+
     for _ in range(num_simulations):
         # Generate random probabilities for safety car occurrence based on calculated probabilities
         probabilities = np.random.rand(len(all_lap_numbers))
@@ -157,12 +121,16 @@ def monte_carlo_simulation(df, selected_race, num_simulations=1000):
         interpolated_probabilities = np.interp(all_lap_numbers, safety_car_probabilities['LapNumber'], safety_car_probabilities['Probability_Safety_Car'])
         
         safety_car_occurrence = probabilities <= interpolated_probabilities
-        simulation_df[f'Simulation_{_+1}'] = safety_car_occurrence.astype(int)
+        simulation_columns.append(pd.Series(safety_car_occurrence.astype(int), name=f'Simulation_{_+1}'))
+
+    # Concatenate all simulation columns into the DataFrame
+    simulation_df = pd.concat([simulation_df] + simulation_columns, axis=1)
 
     # Assign the selected race name to each row
     simulation_df['Race'] = selected_race
 
     return simulation_df
+
 
 
 def calculate_safety_car_probability(df):
@@ -196,6 +164,57 @@ def plot_monte_carlo_simulation(simulation_df, selected_race):
         yaxis_title='Probability of Safety Car',
         height=600,
         width=900,
+        yaxis=dict(range=[0, 1]),
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        margin=dict(l=50, r=50, t=50, b=50)
+    )
+
+    return fig
+
+
+def plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, race_name):
+    # Check if the selected race is in the 2019 data
+    if race_name not in races_2019['EventName'].values:
+        fig = go.Figure()
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    text="Race data not available in 2019",
+                    showarrow=False,
+                    font=dict(size=16)
+                )
+            ]
+        )
+        return fig
+
+    fig = go.Figure()
+
+    # Add traces for 2018 predicted probabilities
+    simulation_columns_2018 = [col for col in monte_carlo_df_2018.columns if col.startswith('Simulation_')]
+    avg_probability_2018 = monte_carlo_df_2018[simulation_columns_2018].mean(axis=1)
+    fig.add_trace(go.Scatter(x=monte_carlo_df_2018['LapNumber'], y=avg_probability_2018,
+                             mode='lines', name='Predicted Probability (2018)', line=dict(color='blue')))
+
+    # Add traces for 2019 actual track status
+    # Filter races_2019 for the selected race
+    selected_race_data_2019 = races_2019[races_2019['EventName'] == race_name]
+
+    # Filter the selected race data for safety car laps with TrackStatus 4 or 6
+    safety_car_laps_2019 = selected_race_data_2019[selected_race_data_2019['TrackStatus'].isin([4, 6])]
+
+    fig.add_trace(go.Scatter(x=safety_car_laps_2019['LapNumber'], y=[0.5] * len(safety_car_laps_2019),
+                             mode='markers', name='Actual Safety Car (2019)', marker=dict(color='green', symbol='triangle-down')))
+
+    # Update layout
+    fig.update_layout(
+        height=600,
+        width=900,
+        xaxis_title='Lap Number',
+        yaxis_title='Probability of Safety Car',
         yaxis=dict(range=[0, 1]),
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         margin=dict(l=50, r=50, t=50, b=50)
