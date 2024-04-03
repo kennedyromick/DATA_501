@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from helper import data_cleaning, correlation_matrix, create_parallel_coordinates_plot, calculate_safety_car_probability, monte_carlo_simulation, plot_monte_carlo_simulation, seconddata
+from helper import data_cleaning, correlation_matrix, create_parallel_coordinates_plot, calculate_safety_car_probability, monte_carlo_simulation, plot_monte_carlo_simulation, plot_monte_carlo_evaluation
+
+# TODO: Fix Russian, Brazilian
 
 st.set_page_config(
     page_title="Beyond the Track App",
@@ -19,49 +21,80 @@ st.sidebar.title("Beyond the Track")
 
 file_format_type = ["csv", "txt", "xls", "xlsx", "ods", "odt"]
 
-uploaded_file = st.sidebar.file_uploader("Upload Your file", type=file_format_type)
+uploaded_file_1 = st.sidebar.file_uploader("Upload 2018 Season Data for Training", type=file_format_type)
+uploaded_file_2 = st.sidebar.file_uploader("Upload 2019 Season Data for Testing", type=file_format_type)
 
-if uploaded_file is not None:
-    races = pd.read_csv(uploaded_file)
+if uploaded_file_1 is not None and uploaded_file_2 is not None:
+    races_2018 = pd.read_csv(uploaded_file_1)
+    races_2019 = pd.read_csv(uploaded_file_2)
 
-    # Data processing
-    races = data_cleaning(races)
+    # Data processing for 2018 data
+    races_2018 = data_cleaning(races_2018)
 
-    # Create correlation matrix
-    corr_matrix = correlation_matrix(races)
+    # Data processing for 2019 data
+    races_2019 = data_cleaning(races_2019)
 
-    # Display correlation matrix results
+        # Display the 2018 dataframe
+    st.subheader("2018 Season Data")
+    st.dataframe(races_2018)
+
+    # Display the 2019 dataframe
+    st.subheader("2019 Season Data")
+    st.dataframe(races_2019)
+
+    # Create correlation matrix for 2018 data
+    corr_matrix_2018 = correlation_matrix(races_2018)
+
+    # Display correlation matrix results for 2018 data
     st.subheader("Correlation Matrix Results")
+    st.pyplot(corr_matrix_2018)
 
-    # Display the correlation matrix plot
-    st.pyplot(corr_matrix)
-
-    # Select columns for parallel coordinate plot
     selected_columns = ['TrackStatus', 'SpeedST', 'LapTimeInSeconds', 'Sector2TimeInSeconds', 'SpeedI1', 'Sector1TimeInSeconds', 'SpeedI2', 'Sector3TimeInSeconds', 'SpeedFL']
 
-    # Create parallel coordinates plot
-    fig_PCP = create_parallel_coordinates_plot(races, selected_columns)
+    # Create parallel coordinates plot for 2018 data
+    fig_PCP_2018 = create_parallel_coordinates_plot(races_2018, selected_columns)
 
     st.subheader("Interactive Parallel Coordinate Plot (Highly Correlated Variables)")
-    # Show the plot
-    st.plotly_chart(fig_PCP)
+    st.plotly_chart(fig_PCP_2018)
 
-    # Get unique race names for selection
-    race_names = races['EventName'].unique()
+    # Get unique race names for selection from 2018 data
+    race_names_2018 = races_2018['EventName'].unique()
 
-    # Select race to plot
-    selected_race = st.sidebar.selectbox("Select Race", race_names)
+    # Select race to plot from 2018 data
+    selected_race_2018 = st.sidebar.selectbox("Select Race (2018 Season)", race_names_2018)
 
-    # Filter data for selected race
-    selected_race_data = races[races['EventName'] == selected_race]
+    # Update selected race in session state
+    st.session_state.selected_race_2018 = selected_race_2018
 
-    # Calculate safety car probability
-    safety_car_data = calculate_safety_car_probability(selected_race_data)
+    # Filter data for selected race from 2018 data
+    selected_race_data_2018 = races_2018[races_2018['EventName'] == selected_race_2018]
 
-    # Plot the predicted probability of safety car for each lap
-    st.subheader(f"Predicted Probability of Safety Car for {selected_race}")
-    monte_carlo_df = monte_carlo_simulation(selected_race_data, selected_race)
-    fig_monte_carlo = plot_monte_carlo_simulation(monte_carlo_df, selected_race)
+    # Calculate safety car probability for 2018 data
+    safety_car_data_2018 = calculate_safety_car_probability(selected_race_data_2018)
 
-    # Display the plot
-    st.plotly_chart(fig_monte_carlo)
+    # Plot the predicted probability of safety car for each lap for 2018 data
+    st.subheader(f"Predicted Probability of Safety Car for {selected_race_2018} (2018 Season)")
+    monte_carlo_df_2018 = monte_carlo_simulation(selected_race_data_2018, selected_race_2018)
+    fig_monte_carlo_2018 = plot_monte_carlo_simulation(monte_carlo_df_2018, selected_race_2018)
+
+    # Display the plot for 2018 data
+    st.plotly_chart(fig_monte_carlo_2018)
+
+# Button to trigger evaluation
+if st.button('Evaluate Simulation Accuracy with 2019 Data'):
+    # Get unique race names for selection from 2019 data
+    race_names_2019 = races_2019['EventName'].unique()
+
+    # Filter data for selected race from 2019 data
+    selected_race_data_2019 = races_2019[races_2019['EventName'] == selected_race_2018]
+
+    # Calculate safety car probability for 2019 data
+    #safety_car_data_2019 = calculate_safety_car_probability(selected_race_data_2019)
+
+    # Plot the predicted probability of safety car for each lap for 2019 data
+    st.subheader(f"Predicted vs Actual Safety Car Probability for {selected_race_2018}")
+    fig_evaluation = plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, selected_race_2018)
+
+    if fig_evaluation is not None:
+        # Display the evaluation plot
+        st.plotly_chart(fig_evaluation)
