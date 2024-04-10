@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 from helper import data_cleaning, correlation_matrix, create_parallel_coordinates_plot, calculate_safety_car_probability, monte_carlo_simulation, plot_monte_carlo_simulation, plot_monte_carlo_evaluation
 
-# TODO: Fix Russian, Brazilian
-
 st.set_page_config(
     page_title="Beyond the Track App",
     page_icon="🏎",
@@ -36,7 +34,7 @@ if uploaded_file_1 is not None and uploaded_file_2 is not None:
     # Data processing for 2019 data
     races_2019 = data_cleaning(races_2019)
 
-        # Display the 2018 dataframe
+    # Display the 2018 dataframe
     st.subheader("2018 Season Data")
     st.dataframe(races_2018)
 
