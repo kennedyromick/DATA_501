@@ -96,8 +96,6 @@ def create_parallel_coordinates_plot(df, selected_columns):
 
     return fig
 
-import plotly.graph_objects as go
-
 def monte_carlo_simulation(df, selected_race, num_simulations=1000):
     # Convert num_simulations to an integer if it's a string
     if isinstance(num_simulations, str):
@@ -191,8 +189,6 @@ def plot_monte_carlo_simulation(simulation_df, selected_race):
     )
 
     return fig
-
-
 
 def plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, race_name):
     # Check if the selected race is in the 2019 data
