@@ -24,6 +24,8 @@ file_format_type = ["csv", "txt", "xls", "xlsx", "ods", "odt"]
 uploaded_file_1 = st.sidebar.file_uploader("Upload 2018 Season Data for Training", type=file_format_type)
 uploaded_file_2 = st.sidebar.file_uploader("Upload 2019 Season Data for Testing", type=file_format_type)
 
+selected_race_2018 = None  # Initialize selected_race_2018 at the beginning
+
 if uploaded_file_1 is not None and uploaded_file_2 is not None:
     races_2018 = pd.read_csv(uploaded_file_1)
     races_2019 = pd.read_csv(uploaded_file_2)
@@ -81,20 +83,23 @@ if uploaded_file_1 is not None and uploaded_file_2 is not None:
     st.plotly_chart(fig_monte_carlo_2018)
 
 # Button to trigger evaluation
-if st.button('Evaluate Simulation Accuracy with 2019 Data'):
-    # Get unique race names for selection from 2019 data
-    race_names_2019 = races_2019['EventName'].unique()
+if monte_carlo_df_2018 is None:
+    st.warning("No occurrences of a safety car in the selected 2018 race. Evaluation is not possible.")
+else:
+    if st.button('Evaluate Simulation Accuracy with 2019 Data'):
+        if selected_race_2018 is None:
+            st.error("Please select a race first.")
+        else:
+            # Get unique race names for selection from 2019 data
+            race_names_2019 = races_2019['EventName'].unique()
 
-    # Filter data for selected race from 2019 data
-    selected_race_data_2019 = races_2019[races_2019['EventName'] == selected_race_2018]
+            # Filter data for selected race from 2019 data
+            selected_race_data_2019 = races_2019[races_2019['EventName'] == selected_race_2018]
 
-    # Calculate safety car probability for 2019 data
-    #safety_car_data_2019 = calculate_safety_car_probability(selected_race_data_2019)
+            # Plot the predicted probability of safety car for each lap for 2019 data
+            st.subheader(f"Predicted vs Actual Safety Car Probability for {selected_race_2018}")
+            fig_evaluation = plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, selected_race_2018)
 
-    # Plot the predicted probability of safety car for each lap for 2019 data
-    st.subheader(f"Predicted vs Actual Safety Car Probability for {selected_race_2018}")
-    fig_evaluation = plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, selected_race_2018)
-
-    if fig_evaluation is not None:
-        # Display the evaluation plot
-        st.plotly_chart(fig_evaluation)
+            if fig_evaluation is not None:
+                # Display the evaluation plot
+                st.plotly_chart(fig_evaluation)
