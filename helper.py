@@ -96,6 +96,8 @@ def create_parallel_coordinates_plot(df, selected_columns):
 
     return fig
 
+import plotly.graph_objects as go
+
 def monte_carlo_simulation(df, selected_race, num_simulations=1000):
     # Convert num_simulations to an integer if it's a string
     if isinstance(num_simulations, str):
@@ -109,6 +111,9 @@ def monte_carlo_simulation(df, selected_race, num_simulations=1000):
 
     # Calculate safety car probabilities for each lap
     safety_car_probabilities = calculate_safety_car_probability(df)
+
+    if len(safety_car_probabilities) == 0:
+        return None
 
     # Perform Monte Carlo simulation to predict the probability of safety car over each lap
     simulation_columns = []
@@ -132,7 +137,6 @@ def monte_carlo_simulation(df, selected_race, num_simulations=1000):
     return simulation_df
 
 
-
 def calculate_safety_car_probability(df):
     # Filter data to include only rows with track status 4 or 6
     safety_car_data = df[df['TrackStatus'].isin([4, 6])]
@@ -150,10 +154,27 @@ def calculate_safety_car_probability(df):
 
 
 def plot_monte_carlo_simulation(simulation_df, selected_race):
+    if simulation_df is None:
+        fig = go.Figure()
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    text="No occurrences of a safety car - cannot make predictions",
+                    showarrow=False,
+                    font=dict(size=16)
+                )
+            ]
+        )
+        return fig
+
     fig = go.Figure()
 
     # Calculate the average probability across all simulations
-    avg_probability = np.mean(simulation_df.filter(like='Simulation_'), axis=1)
+    avg_probability = simulation_df.drop(columns=['LapNumber', 'Race']).mean(axis=1)
 
     # Add trace for the averaged probability
     fig.add_trace(go.Scatter(x=simulation_df['LapNumber'], y=avg_probability, mode='lines', name='Average Probability'))
@@ -170,6 +191,7 @@ def plot_monte_carlo_simulation(simulation_df, selected_race):
     )
 
     return fig
+
 
 
 def plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, race_name):
@@ -207,7 +229,7 @@ def plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, race_name):
     safety_car_laps_2019 = selected_race_data_2019[selected_race_data_2019['TrackStatus'].isin([4, 6])]
 
     fig.add_trace(go.Scatter(x=safety_car_laps_2019['LapNumber'], y=[0.5] * len(safety_car_laps_2019),
-                             mode='markers', name='Actual Safety Car (2019)', marker=dict(color='green', symbol='triangle-down')))
+                             mode='markers', name='Actual or Virtual Safety Car (2019)', marker=dict(color='green', symbol='triangle-down')))
 
     # Update layout
     fig.update_layout(
