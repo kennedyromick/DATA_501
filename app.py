@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from helper import data_cleaning, correlation_matrix, create_parallel_coordinates_plot, calculate_safety_car_probability, monte_carlo_simulation, plot_monte_carlo_simulation, plot_monte_carlo_evaluation
+from helper import data_cleaning, correlation_matrix, create_parallel_coordinates_plot, calculate_safety_car_probability, monte_carlo_simulation, plot_monte_carlo_simulation, plot_monte_carlo_evaluation, calculate_statistical_significance
 
 st.set_page_config(
     page_title="Beyond the Track App",
@@ -80,24 +80,39 @@ if uploaded_file_1 is not None and uploaded_file_2 is not None:
     # Display the plot for 2018 data
     st.plotly_chart(fig_monte_carlo_2018)
 
-# Button to trigger evaluation
-if monte_carlo_df_2018 is None:
-    st.warning("No occurrences of a safety car in the selected 2018 race. Evaluation is not possible.")
-else:
-    if st.button('Evaluate Simulation Accuracy with 2019 Data'):
-        if selected_race_2018 is None:
-            st.error("Please select a race first.")
-        else:
-            # Get unique race names for selection from 2019 data
-            race_names_2019 = races_2019['EventName'].unique()
+    # Button to trigger evaluation
+    if monte_carlo_df_2018 is None:
+        st.warning("No occurrences of a safety car in the selected 2018 race. Evaluation is not possible.")
+    else:
+        if st.button('Evaluate Simulation Accuracy with 2019 Data'):
+            if selected_race_2018 is None:
+                st.error("Please select a race first.")
+            else:
+                # Get unique race names for selection from 2019 data
+                race_names_2019 = races_2019['EventName'].unique()
 
-            # Filter data for selected race from 2019 data
-            selected_race_data_2019 = races_2019[races_2019['EventName'] == selected_race_2018]
+                # Filter data for selected race from 2019 data
+                selected_race_data_2019 = races_2019[races_2019['EventName'] == selected_race_2018]
 
-            # Plot the predicted probability of safety car for each lap for 2019 data
-            st.subheader(f"Predicted vs Actual Safety Car Probability for {selected_race_2018}")
-            fig_evaluation = plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, selected_race_2018)
+                # Plot the predicted probability of safety car for each lap for 2019 data
+                st.subheader(f"Predicted vs Actual Safety Car Probability for {selected_race_2018}")
+                fig_evaluation = plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, selected_race_2018)
 
-            if fig_evaluation is not None:
-                # Display the evaluation plot
-                st.plotly_chart(fig_evaluation)
+                if fig_evaluation is not None:
+                    # Display the evaluation plot
+                    st.plotly_chart(fig_evaluation)
+
+                    # Calculate lap-wise statistical significance for the selected race
+                    significance_results = calculate_statistical_significance(monte_carlo_df_2018, races_2019)
+
+                    # Display significance for the selected race
+                    st.subheader("Lap-wise Statistical Significance Results")
+                    race_results = significance_results.get(selected_race_2018)
+                    st.write(f"Race: {selected_race_2018}")
+                    st.write(f"P-value: {race_results['p_value']}")
+                    st.write(f"Statistically Significant: {race_results['statistically_significant']}")
+
+                    # Display lap-wise Monte Carlo and actual probabilities
+                    st.subheader("Lap-wise Monte Carlo and Actual Probabilities")
+                    lap_probabilities_df = race_results['lap_probabilities_df']
+                    st.write(lap_probabilities_df)
