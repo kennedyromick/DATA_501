@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import plotly.graph_objects as go
+import numpy as np
+from scipy import stats
 
 
 excel_type =["vnd.ms-excel","vnd.openxmlformats-officedocument.spreadsheetml.sheet", "vnd.oasis.opendocument.spreadsheet", "vnd.oasis.opendocument.text"]
@@ -239,3 +241,44 @@ def plot_monte_carlo_evaluation(monte_carlo_df_2018, races_2019, race_name):
     )
 
     return fig
+
+def calculate_statistical_significance(monte_carlo_df, races_2019):
+    # Initialize a dictionary to store the results for each race
+    significance_results = {}
+
+    # Get the list of races from the Monte Carlo simulation DataFrame
+    races_list = monte_carlo_df['Race'].unique()
+
+    # Iterate over each race
+    for race_name in races_list:
+        # Filter the Monte Carlo DataFrame for the current race
+        race_data = monte_carlo_df[monte_carlo_df['Race'] == race_name]
+
+        # Filter the 2019 race data for the current race
+        race_2019_data = races_2019[races_2019['EventName'] == race_name]
+
+        # Calculate the observed probability of safety car occurrence for the current race
+        observed_probability = len(race_2019_data[race_2019_data['TrackStatus'].isin([4, 6])]) / len(race_2019_data)
+
+        # Calculate the average predicted probability from the Monte Carlo simulation
+        predicted_probability = race_data.drop(columns=['LapNumber', 'Race']).mean(axis=1)
+
+        # Perform a t-test to compare the predicted and observed probabilities
+        t_statistic, p_value = stats.ttest_ind(predicted_probability, np.full(len(predicted_probability), observed_probability))
+
+        # Create a DataFrame to store Monte Carlo and actual probabilities for each lap
+        lap_probabilities_df = pd.DataFrame({
+            'LapNumber': race_data['LapNumber'],
+            'MonteCarloProbability': predicted_probability,
+            'ActualProbability': [observed_probability] * len(predicted_probability)
+        })
+
+        # Store the results in the dictionary
+        significance_results[race_name] = {
+            'lap_probabilities_df': lap_probabilities_df,
+            'observed_probability': observed_probability,
+            'p_value': p_value,
+            'statistically_significant': p_value < 0.05
+        }
+
+    return significance_results
