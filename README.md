@@ -1,6 +1,6 @@
 # DATA 501 Project - Beyond the Track: Analyzing Safety Car Incidents in Formula 1 for Enhanced Race Strategy
 
-By: Akib Hasan Aryan and Kennedy Romick
+https://github.com/user-attachments/assets/3f210cdc-2815-4fe7-bdb4-583c0c30c3dd
 
 ## About the Project
 
